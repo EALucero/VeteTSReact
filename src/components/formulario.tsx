@@ -1,29 +1,53 @@
-import { Dispatch, FormEvent, SetStateAction } from "react"
+import { FormEvent, useContext, useState } from "react"
 import { useForm } from "../hooks/useForm"
 import { InputForm } from "./input-form"
+import { Paciente, PacientesContext } from "../context/PacientesContext"
+import { schemaFormAddPaciente } from "../validations/schema-form-add-paciente"
 
-export interface FormValues {
-  mascota: string,
-  duenio: string,
-  email: string,
-  raza: string
-}
+type FormValues = Omit<Paciente, 'id'>
 
-export const Formulario = ({ setPacientes }: { setPacientes: Dispatch<SetStateAction<FormValues[]>> }) => {
+// export const Formulario = ({ setPacientes }: { setPacientes: Dispatch<SetStateAction<Paciente[]>> }) => {
 
-  const { formValues, handleChange, /* reset */ } = useForm<FormValues>({
+export const Formulario = () => {
+  const { agregarPaciente } = useContext(PacientesContext)
+
+  const [errors, setErrors] = useState<FormValues>({} as FormValues)
+
+  const { formValues, handleChange, reset } = useForm<FormValues>({
     mascota: "",
     duenio: "",
     email: "",
     raza: ""
   })
 
+  const { mascota, duenio, email, raza } = formValues;
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    /* console.log(formValues); */
-    setPacientes((prev: FormValues[]) => {
-      return [...prev, formValues];
-    });
+
+    const result = schemaFormAddPaciente.validate(formValues, {
+      abortEarly: false
+    })
+
+    if (result.error) {
+      setErrors(result.error.details.reduce((acc, err) => {
+        const inputName = err.context?.key as string;
+        const message = err.message;
+        return {
+          ...acc,
+          [inputName]: message,
+        };
+      }, {} as FormValues));
+    }
+
+    const newPaciente = {
+      id: crypto.randomUUID(),
+      ...formValues
+    }
+
+    agregarPaciente(newPaciente)
+    setErrors({} as FormValues)
+    reset()
   }
 
   return (
@@ -32,39 +56,42 @@ export const Formulario = ({ setPacientes }: { setPacientes: Dispatch<SetStateAc
       <form className="bg-white shadow-lg rounded-lg py-10 px-5 mb-10"
         onSubmit={handleSubmit}
       >
-
         <InputForm
           label="Mascota"
           name="mascota"
           type="text"
           placeholder="Nombre de la mascota"
           onChange={handleChange}
+          value={mascota}
+          error={errors.mascota}
         />
-
         <InputForm
           label="Raza"
           name="raza"
           type="text"
           placeholder="Raza de la mascota"
           onChange={handleChange}
+          value={raza}
+          error={errors.raza}
         />
-
         <InputForm
           label="Dueño"
           name="duenio"
           type="text"
-          placeholder="Nombre del duenio"
+          placeholder="Nombre y apellido del duenio"
           onChange={handleChange}
+          value={duenio}
+          error={errors.duenio}
         />
-
         <InputForm
           label="Email"
-          name="mail"
+          name="email"
           type="text"
-          placeholder="Email del duenio"
+          placeholder="Email de contacto"
           onChange={handleChange}
+          value={email}
+          error={errors.email}
         />
-
         <button
           className="text-white bg-indigo-600 w-full p-3 uppercase font-bold hover:bg-indigo-800 transition-all">Agregar paciente
         </button>
